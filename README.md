@@ -1,34 +1,55 @@
-# Homework 1: Two Java Services
+# Homework: Service Registry with Zookeeper
 
 This repository contains two Spring Boot services:
 
 1. `currency-rate-provider`  
    JSON-RPC server that returns current `USD/RUB` rate with small random changes.
 2. `rate-printer`  
-   Client that calls provider every 5 seconds and prints rate to console.
+   Consumer that calls provider every 5 seconds and prints rate to console.
 
 ## Requirements
 
 - Java 17+
 - Maven 3.9+
+- Apache Zookeeper (for service registry)
+
+## Start Zookeeper
+
+Example with Docker:
+
+```powershell
+docker run --name psed2-zk -p 2181:2181 -d zookeeper:3.9
+```
 
 ## Run
 
-Open two terminals in this repository root.
+Open terminals in this repository root.
 
-Terminal 1 (provider):
+Terminal 1 (provider instance 1):
 
 ```powershell
 cd currency-rate-provider
 mvn spring-boot:run
 ```
 
-Terminal 2 (printer):
+Terminal 2 (provider instance 2, optional for load balancing):
+
+```powershell
+cd currency-rate-provider
+mvn spring-boot:run "-Dspring-boot.run.arguments=--server.port=8081"
+```
+
+Terminal 3 (consumer):
 
 ```powershell
 cd rate-printer
 mvn spring-boot:run
 ```
+
+What happens:
+
+- each `currency-rate-provider` instance auto-registers in Zookeeper under service name `currency-rate-provider`
+- `rate-printer` resolves instances from Zookeeper and balances requests between them via Spring Cloud LoadBalancer
 
 ## RPC API (provider)
 
