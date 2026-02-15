@@ -20,7 +20,7 @@ public class RatePoller {
 
     public RatePoller(
             RestTemplate restTemplate,
-            @Value("${provider.url:http://localhost:8080/rpc}") String providerUrl
+            @Value("${provider.url:http://currency-rate-provider/rpc}") String providerUrl
     ) {
         this.restTemplate = restTemplate;
         this.providerUrl = providerUrl;
