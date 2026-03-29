@@ -25,8 +25,34 @@ docker compose up -d
 Ports:
 
 - Zookeeper: `2181`
+- Zookeeper metrics: `7070`
+- Provider service: `8080`
+- Provider service2: `8082`
+- Client actuator: `8081`
+- Prometheus: `9090`
+- Grafana: `3000` (`admin` / `admin`)
 - Pact Broker: `9292`
 - Pact Broker Postgres: `5432`
+
+Grafana is provisioned with Prometheus datasource and dashboards:
+
+- `JVM Micrometer` based on Grafana dashboard `4701`
+- `PSED2 Services Overview` with JSON-RPC RPS by client, HTTP 500 errors, request duration avg/p50/p95/p99 and JVM panels
+
+Prometheus scrapes:
+
+- `client` at `/actuator/prometheus`
+- `service` at `/actuator/prometheus`
+- `service2` at `/actuator/prometheus`
+- `zookeeper` at `/metrics`
+
+Useful metric names:
+
+- `rpc_server_requests_total`
+- `rpc_server_errors_total`
+- `rpc_server_request_duration_seconds`
+- `jvm_memory_used_bytes`
+- `jvm_threads_live_threads`
 
 ## API Paths
 

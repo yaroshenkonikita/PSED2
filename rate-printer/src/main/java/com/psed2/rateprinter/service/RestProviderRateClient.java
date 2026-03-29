@@ -23,17 +23,20 @@ public class RestProviderRateClient implements ProviderRateClient {
     private final RateRequestFactory requestFactory;
     private final JsonRpcRateResponseParser responseParser;
     private final String providerUrl;
+    private final String clientName;
 
     public RestProviderRateClient(
             RestTemplate restTemplate,
             RateRequestFactory requestFactory,
             JsonRpcRateResponseParser responseParser,
-            @Value("${provider.url:http://currency-rate-provider/api/v1/rpc}") String providerUrl
+            @Value("${provider.url:http://currency-rate-provider/api/v1/rpc}") String providerUrl,
+            @Value("${client.name:rate-printer}") String clientName
     ) {
         this.restTemplate = restTemplate;
         this.requestFactory = requestFactory;
         this.responseParser = responseParser;
         this.providerUrl = providerUrl;
+        this.clientName = clientName;
     }
 
     @Override
@@ -62,6 +65,7 @@ public class RestProviderRateClient implements ProviderRateClient {
     private HttpHeaders jsonHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Client-Name", clientName);
         return headers;
     }
 }
