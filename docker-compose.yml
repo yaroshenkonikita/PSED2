@@ -11,11 +11,13 @@ services:
       - "7070:7070"
 
   service:
+    image: ${PROVIDER_IMAGE:-psed2/currency-rate-provider:local}
     build:
       context: ./currency-rate-provider
     container_name: psed2-service
     depends_on:
       - zookeeper
+    stop_grace_period: 25s
     environment:
       SERVER_PORT: 8080
       SPRING_APPLICATION_NAME: currency-rate-provider
@@ -26,11 +28,11 @@ services:
       - "8080:8080"
 
   service2:
-    build:
-      context: ./currency-rate-provider
+    image: ${PROVIDER_IMAGE:-psed2/currency-rate-provider:local}
     container_name: psed2-service2
     depends_on:
       - zookeeper
+    stop_grace_period: 25s
     environment:
       SERVER_PORT: 8080
       SPRING_APPLICATION_NAME: currency-rate-provider
@@ -41,13 +43,18 @@ services:
       - "8082:8080"
 
   client:
+    image: ${CLIENT_IMAGE:-psed2/rate-printer:local}
     build:
       context: ./rate-printer
     container_name: psed2-client
     depends_on:
-      - zookeeper
-      - service
-      - service2
+      zookeeper:
+        condition: service_started
+      service:
+        condition: service_healthy
+      service2:
+        condition: service_healthy
+    stop_grace_period: 25s
     environment:
       SERVER_PORT: 8081
       SPRING_APPLICATION_NAME: rate-printer
