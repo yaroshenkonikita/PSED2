@@ -1,82 +1,103 @@
-# Homework: Service Registry with Zookeeper
+# PSED2: Currency RPC + Pact Contracts
 
-This repository contains two Spring Boot services:
+Repository contains two Spring Boot services:
 
-1. `currency-rate-provider`  
-   JSON-RPC server that returns current `USD/RUB` rate with small random changes.
-2. `rate-printer`  
-   Consumer that calls provider every 5 seconds and prints rate to console.
+1. `currency-rate-provider`
+   JSON-RPC provider returning rates with request parameters (pair + time).
+2. `rate-printer`
+   Consumer polling provider every 5 seconds and printing result to console.
 
-## Requirements
+## Stack
 
 - Java 17+
 - Maven 3.9+
-- Apache Zookeeper (for service registry)
+- Zookeeper (service discovery)
+- Pact Broker (contract storage)
 
-## Start Zookeeper
+## Start infrastructure
 
-Example with Docker:
+From repository root:
 
 ```powershell
-docker run --name psed2-zk -p 2181:2181 -d zookeeper:3.9
+docker compose up -d
 ```
 
-## Run
+Ports:
 
-Open terminals in this repository root.
+- Zookeeper: `2181`
+- Pact Broker: `9292`
+- Pact Broker Postgres: `5432`
 
-Terminal 1 (provider instance 1):
+## API Paths
+
+Provider endpoint:
+
+- Versioned API: `POST /api/v1/rpc`
+
+Main JSON-RPC method:
+
+- `getRate` with params:
+  - `pair` (for example `USD/RUB`)
+  - `at` (ISO-8601 timestamp, for example `2026-03-10T08:00:00Z`)
+
+
+## Run services
+
+Terminal 1:
 
 ```powershell
 cd currency-rate-provider
 mvn spring-boot:run
 ```
 
-Terminal 2 (provider instance 2, optional for load balancing):
-
-```powershell
-cd currency-rate-provider
-mvn spring-boot:run "-Dspring-boot.run.arguments=--server.port=8081"
-```
-
-Terminal 3 (consumer):
+Terminal 2:
 
 ```powershell
 cd rate-printer
 mvn spring-boot:run
 ```
 
-What happens:
+## Contract workflow (Pact)
 
-- each `currency-rate-provider` instance auto-registers in Zookeeper under service name `currency-rate-provider`
-- `rate-printer` resolves instances from Zookeeper and balances requests between them via Spring Cloud LoadBalancer
+### 1. Consumer generates and publishes contract
 
-## RPC API (provider)
-
-`POST http://localhost:8080/rpc`
-
-Request example:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "getUsdRubRate",
-  "params": null,
-  "id": 1
-}
+```powershell
+cd rate-printer
+mvn clean verify
 ```
 
-Response example:
+What happens:
 
-```json
-{
-  "jsonrpc": "2.0",
-  "result": {
-    "pair": "USD/RUB",
-    "rate": 89.7341,
-    "at": "2026-02-08T15:59:02.892518200Z"
-  },
-  "error": null,
-  "id": 1
-}
+- `RateProviderPactTest` generates pact file into `target/pacts`
+- Maven Pact plugin publishes pact to broker (`http://localhost:9292`)
+- Consumer version for pact publish is unique per build (`<project.version>-<timestamp>`)
+
+### 2. Provider verifies contracts from broker during build
+
+```powershell
+cd currency-rate-provider
+mvn clean verify
+```
+
+What happens:
+
+- `RateProviderPactVerificationTest` pulls contracts from Pact Broker
+- Provider API is started on random port
+- All interactions are verified against provider implementation
+
+If verification fails, build fails.
+
+## Useful flags
+
+Skip pact publish on consumer side:
+
+```powershell
+mvn clean verify -DskipPactPublish=true
+```
+
+Override Pact Broker location:
+
+```powershell
+mvn clean verify -Dpact.broker.url=http://localhost:9292
+mvn clean verify -Dpactbroker.host=localhost -Dpactbroker.port=9292 -Dpactbroker.scheme=http
 ```

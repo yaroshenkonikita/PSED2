@@ -2,17 +2,27 @@ package com.psed2.currencyrateprovider.service;
 
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.concurrent.ThreadLocalRandom;
+import java.time.Instant;
 
 @Service
 public class CurrencyRateService {
-    private static final double BASE_USD_RUB = 90.0;
-    private static final double RANDOM_DELTA = 1.5;
+    private final CurrencyPairNormalizer pairNormalizer;
+    private final BaseRateProvider baseRateProvider;
+    private final RateValueCalculator rateValueCalculator;
 
-    public double currentUsdRubRate() {
-        double value = BASE_USD_RUB + ThreadLocalRandom.current().nextDouble(-RANDOM_DELTA, RANDOM_DELTA);
-        return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP).doubleValue();
+    public CurrencyRateService(
+            CurrencyPairNormalizer pairNormalizer,
+            BaseRateProvider baseRateProvider,
+            RateValueCalculator rateValueCalculator
+    ) {
+        this.pairNormalizer = pairNormalizer;
+        this.baseRateProvider = baseRateProvider;
+        this.rateValueCalculator = rateValueCalculator;
+    }
+
+    public double currentRate(String pair, Instant at) {
+        String normalizedPair = pairNormalizer.normalize(pair);
+        double baseRate = baseRateProvider.getBaseRate(normalizedPair);
+        return rateValueCalculator.calculate(baseRate, at);
     }
 }

@@ -20,6 +20,11 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.5</spring-cloud.version>
+        <pact.version>4.6.15</pact.version>
+        <pact.broker.url>http://localhost:9292</pact.broker.url>
+        <skipPactPublish>false</skipPactPublish>
+        <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
+        <pact.consumer.version>${project.version}-${maven.build.timestamp}</pact.consumer.version>
     </properties>
 
     <dependencyManagement>
@@ -47,6 +52,17 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>au.com.dius.pact.consumer</groupId>
+            <artifactId>junit5</artifactId>
+            <version>${pact.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -54,6 +70,29 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>au.com.dius.pact.provider</groupId>
+                <artifactId>maven</artifactId>
+                <version>${pact.version}</version>
+                <configuration>
+                    <pactBrokerUrl>${pact.broker.url}</pactBrokerUrl>
+                    <pactDirectory>${project.build.directory}/pacts</pactDirectory>
+                    <projectVersion>${pact.consumer.version}</projectVersion>
+                    <tags>
+                        <tag>main</tag>
+                    </tags>
+                    <skipPactPublish>${skipPactPublish}</skipPactPublish>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>publish-pacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>publish</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
