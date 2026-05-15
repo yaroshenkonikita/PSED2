@@ -22,6 +22,15 @@ From repository root:
 docker compose up -d
 ```
 
+For stricter build/release/run separation, build immutable service images first and then run the release by image tag:
+
+```powershell
+docker compose build service client
+$env:PROVIDER_IMAGE="psed2/currency-rate-provider:local"
+$env:CLIENT_IMAGE="psed2/rate-printer:local"
+docker compose up -d --no-build
+```
+
 Ports:
 
 - Zookeeper: `2181`
