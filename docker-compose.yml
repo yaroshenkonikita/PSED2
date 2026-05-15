@@ -2,8 +2,88 @@ services:
   zookeeper:
     image: zookeeper:3.9
     container_name: psed2-zookeeper
+    environment:
+      ZOO_CFG_EXTRA: |
+        metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
+        metricsProvider.httpPort=7070
     ports:
       - "2181:2181"
+      - "7070:7070"
+
+  service:
+    build:
+      context: ./currency-rate-provider
+    container_name: psed2-service
+    depends_on:
+      - zookeeper
+    environment:
+      SERVER_PORT: 8080
+      SPRING_APPLICATION_NAME: currency-rate-provider
+      SPRING_CLOUD_ZOOKEEPER_CONNECT_STRING: zookeeper:2181
+      SPRING_CLOUD_ZOOKEEPER_DISCOVERY_INSTANCE_HOST: service
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus
+    ports:
+      - "8080:8080"
+
+  service2:
+    build:
+      context: ./currency-rate-provider
+    container_name: psed2-service2
+    depends_on:
+      - zookeeper
+    environment:
+      SERVER_PORT: 8080
+      SPRING_APPLICATION_NAME: currency-rate-provider
+      SPRING_CLOUD_ZOOKEEPER_CONNECT_STRING: zookeeper:2181
+      SPRING_CLOUD_ZOOKEEPER_DISCOVERY_INSTANCE_HOST: service2
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus
+    ports:
+      - "8082:8080"
+
+  client:
+    build:
+      context: ./rate-printer
+    container_name: psed2-client
+    depends_on:
+      - zookeeper
+      - service
+      - service2
+    environment:
+      SERVER_PORT: 8081
+      SPRING_APPLICATION_NAME: rate-printer
+      CLIENT_NAME: rate-printer
+      SPRING_CLOUD_ZOOKEEPER_CONNECT_STRING: zookeeper:2181
+      PROVIDER_URL: http://currency-rate-provider/api/v1/rpc
+      POLL_INITIAL_DELAY_MS: 3000
+    ports:
+      - "8081:8081"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: psed2-prometheus
+    depends_on:
+      - client
+      - service
+      - service2
+      - zookeeper
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: psed2-grafana
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
 
   pact-broker-db:
     image: postgres:16-alpine
